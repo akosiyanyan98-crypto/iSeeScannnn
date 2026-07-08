@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>iSeeScan - AI Laboratory Reporting Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { margin: 0; background: linear-gradient(rgba(0,80,255,.5), rgba(0,20,80,.9)), url("https://images.unsplash.com/photo-1518770660439-4636190af475") no-repeat center center fixed; background-size: cover; color: white; padding: 20px; }
+        .container { max-width: 1100px; margin: 20px auto; background: rgba(255,255,255,.1); backdrop-filter: blur(20px); border: 1px solid rgba(0, 234, 255, 0.35); border-radius: 25px; padding: 35px; }
+        .top-bar { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .back-link, .admin-toggle { color: #00eaff; background: none; border: none; font-size: 16px; cursor: pointer; text-decoration: none; font-weight: 500; }
+        .workspace-grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
+        .workspace-grid.admin-active { grid-template-columns: 1.2fr 1fr; }
+        .chat-container { background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(0, 234, 255, 0.2); border-radius: 18px; height: 480px; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .msg { max-width: 80%; padding: 14px 20px; border-radius: 18px; line-height: 1.6; }
+        .msg.user { background: linear-gradient(135deg, #0055ff, #00aaff); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg.ai { background: rgba(255, 255, 255, 0.12); border-left: 4px solid #00ff9d; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg.admin-reply { background: rgba(255, 215, 0, 0.1); border-left: 4px solid #ffd700; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .sender-header { font-weight: 700; font-size: 13px; text-transform: uppercase; margin-bottom: 6px; }
+        .ai-color { color: #00ff9d; } .admin-color { color: #ffd700; }
+        .input-bar { display: flex; padding: 15px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(0,234,255,0.15); gap: 12px; }
+        .input-bar input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(0,234,255,0.3); border-radius: 12px; padding: 15px; color: white; outline: none; }
+        .input-bar button { background: #00eaff; color: #001450; border: none; border-radius: 12px; padding: 0 28px; font-weight: 700; cursor: pointer; }
+        .admin-box { display: none; background: rgba(0, 10, 30, 0.75); border: 2px dashed #ffd700; border-radius: 18px; padding: 20px; }
+        .ticket-list { max-height: 160px; overflow-y: auto; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px; }
+        .ticket-item { padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 5px; border-radius: 6px; cursor: pointer; font-size: 13px; border-left: 3px solid #00eaff; }
+        .ticket-item.active-tkt { border-left-color: #ffd700; background: rgba(255, 215, 0, 0.1); }
+        .admin-control-group { display: flex; flex-direction: column; gap: 10px; }
+        .admin-control-group textarea { background: rgba(255,255,255,0.1); border: 1px solid #ffd700; border-radius: 10px; padding: 12px; color: white; height: 100px; resize: none; outline: none; }
+        .admin-control-group button { background: #ffd700; color: black; border: none; padding: 12px; font-weight: bold; border-radius: 10px; cursor: pointer; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .badge.hw { background: #ffd700; color: #000; } .badge.sw { background: #ff3366; color: #fff; }
+        .workspace-grid.admin-active {
+    grid-template-columns: 1.2fr 1fr;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <a href="index.html" class="back-link">⬅ Back to Dashboard</a>
+            <button class="admin-toggle" onclick="toggleAdminPortal()">🔒 Admin Portal</button>
+        </div>
+        <header style="text-align:center; margin-bottom:30px;">
+            <h1 style="color:#00eaff; text-shadow:0 0 15px cyan;">🛠️ AI Computer Incident Reporting</h1>
+            <p style="color:#e5faff;">Computer Laboratory Diagnostics Engine & Live Status Logs</p>
+        </header>
+        <div class="workspace-grid" id="workspaceGrid">
+            <div class="chat-container">
+                <div class="chat-messages" id="reportingLogs">
+                    <div class="msg ai"><div class="sender-header ai-color">iSeeScan Core</div>Welcome. Please submit a description of the computer hardware or software issue you are encountering.</div>
+                </div>
+                <div class="input-bar">
+                    <input type="text" id="reportInput" placeholder="Describe the problem..." onkeydown="if(event.key==='Enter') processReport()">
+                    <button onclick="processReport()">File Report</button>
+                </div>
+            </div>
+            <div class="admin-box" id="adminBox">
+                <h2>👑 Laboratory Administrator Desk</h2>
+                <div class="ticket-list" id="ticketList"><div class="ticket-item" style="color:#aaa; text-align:center;" id="noTicketsHint">No submitted reports in current session window.</div></div>
+                <div class="admin-control-group">
+                    <textarea id="adminResponseText" placeholder="Type technical notes..."></textarea>
+                    <button onclick="submitAdminReply()">Deploy Official Admin Override Notice</button>
+                </div>
+            </div>
+        </div>
+    </div>
+   <script>
+        // --- SECURE API KEY CONFIGURATION ---
+        const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"; 
+
+        let reportSessions = [];
+        let activeTicketIdx = null;
+        let isAdminLoggedIn = false;
+
+        // Automatically reload logs from the browser memory on page bootup
+        window.onload = function() {
+            loadSavedLogs();
+        };
+
+        function toggleAdminPortal() {
+            if (!isAdminLoggedIn) {
+                if (prompt("Enter admin access key:") === "admin123") {
+                    isAdminLoggedIn = true;
+                    document.getElementById("adminBox").style.display = "block";
+                    document.getElementById("workspaceGrid").classList.add("admin-active");
+                } else { alert("Access Denied."); }
+            } else {
+                isAdminLoggedIn = false;
+                document.getElementById("adminBox").style.display = "none";
+                document.getElementById("workspaceGrid").classList.remove("admin-active");
+            }
+        }
+
+        // --- ASYNC OPENAI CUSTOM SERVICE AGENT ---
+        async function processReport() {
+            const input = document.getElementById("reportInput");
+            const val = input.value.trim();
+            if (!val) return;
+
+            // 1. Instantly render the user's issue onto the screen log
+            createMessage(val, "user");
+            storeTicket(val);
+            input.value = "";
+            saveAllData(); // Save mid-session state
+
+            try {
+                // 2. Query the OpenAI Chat Completions endpoint
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini", // Blazing fast and efficient model
+                        messages: [
+                            {
+                                role: "system",
+                                content: `You are the iSeeScan Automated Customer Service Core, an expert, supportive technical agent for a school computer laboratory. 
+                                Your goal is to analyze user complaints and provide clear instructions.
+                                
+                                STRICT FORMAT RULES:
+                                1. Start your response with one of these matching badges depending on the domain:
+                                   - Physical parts/wiring/monitor issues -> <span class="badge hw">Hardware Fault</span>
+                                   - Software bugs/crashes/slowness/viruses -> <span class="badge sw">Software Fault</span>
+                                2. Provide a bold section -> <br><b>Preliminary Assessment:</b> (Briefly diagnose what component or file is causing the error in plain, helpful language).
+                                3. Provide a second bold section -> <br><b>AI Action Directives:</b> (Give clear, easy-to-follow bullet points detailing exactly what the student should try doing at their desk right now).`
+                            },
+                            {
+                                role: "user",
+                                content: `The student reports this laboratory machine problem: "${val}"`
+                            }
+                        ],
+                        temperature: 0.5
+                    })
+                });
+
+                const data = await response.json();
+                let aiResponseHTML = data.choices[0].message.content;
+
+                // 3. Render OpenAI's diagnosis and commit to local storage
+                createMessage(aiResponseHTML, "ai", "iSeeScan Core");
+                saveAllData();
+
+            } catch (error) {
+                console.error("OpenAI API Failure:", error);
+                createMessage(`<span class="badge sw">System Error</span><br>Diagnostic Core offline. Your ticket has been logged into memory—please wait for manual admin review.`, "ai", "iSeeScan Core");
+            }
+        }
+
+        function storeTicket(t, isResolved = false) {
+            const hint = document.getElementById("noTicketsHint"); if(hint) hint.remove();
+            const idx = reportSessions.length; 
+            reportSessions.push({ text: t, resolved: isResolved });
+
+            const item = document.createElement("div"); 
+            item.className = "ticket-item"; 
+            item.id = `t-${idx}`; 
+            item.textContent = `[#${1000+idx}] ${t}`;
+            
+            if (isResolved) item.style.borderLeftColor = "#00ff9d";
+
+            item.onclick = () => { 
+                activeTicketIdx = idx; 
+                document.querySelectorAll('.ticket-item').forEach(e => e.classList.remove('active-tkt')); 
+                item.classList.add('active-tkt'); 
+            };
+            document.getElementById("ticketList").appendChild(item);
+        }
+
+        function submitAdminReply() {
+            const txt = document.getElementById("adminResponseText");
+            if(!isAdminLoggedIn || activeTicketIdx === null || !txt.value.trim()) return;
+
+            // Log admin intervention record to chat window
+            createMessage(`<span class="badge hw">ADMIN RESPONSE</span><br><b>Ref Ticket #${1000+activeTicketIdx}:</b><br>${txt.value}`, "admin-reply", "Admin Update");
+            
+            // Resolve ticket internally and update visual checklist
+            document.getElementById(`t-${activeTicketIdx}`).style.borderLeftColor = "#00ff9d";
+            reportSessions[activeTicketIdx].resolved = true;
+
+            txt.value = ""; 
+            activeTicketIdx = null;
+            saveAllData(); // Commit manual action changes to memory
+        }
+
+        function createMessage(c, s, t="") {
+            const box = document.getElementById("reportingLogs"); 
+            const div = document.createElement("div"); 
+            div.className = `msg ${s}`;
+            div.innerHTML = t ? `<div class="sender-header ${s==='ai'?'ai-color':'admin-color'}">${t}</div>${c}` : c;
+            box.appendChild(div); 
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // --- LOCAL STORAGE DATA ENGINE ---
+        function saveAllData() {
+            const chatMessages = document.getElementById("reportingLogs").innerHTML;
+            localStorage.setItem("iSeeScan_chatLogs", chatMessages);
+            localStorage.setItem("iSeeScan_tickets", JSON.stringify(reportSessions));
+        }
+
+        function loadSavedLogs() {
+            const savedChats = localStorage.getItem("iSeeScan_chatLogs");
+            const savedTickets = localStorage.getItem("iSeeScan_tickets");
+
+            if (savedChats) {
+                document.getElementById("reportingLogs").innerHTML = savedChats;
+                document.getElementById("reportingLogs").scrollTop = document.getElementById("reportingLogs").scrollHeight;
+            }
+
+            if (savedTickets) {
+                const hint = document.getElementById("noTicketsHint"); if(hint) hint.remove();
+                const parsedTickets = JSON.parse(savedTickets);
+                parsedTickets.forEach((ticket, idx) => {
+                    storeTicket(ticket.text, ticket.resolved);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
